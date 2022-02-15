@@ -1,16 +1,15 @@
 FROM golang:1.16.14-alpine3.15
 RUN apk add --no-cache gcc musl-dev
 
-WORKDIR /app
-COPY go.mod ./
-COPY go.sum ./
+WORKDIR $GOPATH/src
+COPY . .
 
 RUN go mod download
 
-COPY *.go ./
 RUN go build -o /chaostheory-task
+RUN go build -o /go/bin/chaostheory-task
 
-EXPOSE 8080
+EXPOSE 3000
 
-CMD [ "/chaostheory-task" ]
+CMD [ "./chaostheory-task" ]
 
