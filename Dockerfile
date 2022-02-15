@@ -11,5 +11,5 @@ RUN go build -o /go/bin/chaostheory-task
 
 EXPOSE 3000
 
-CMD [ "./chaostheory-task" ]
+CMD [ "./go/bin/chaostheory-task" ]
 
