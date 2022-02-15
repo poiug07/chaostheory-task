@@ -29,7 +29,8 @@ func NewDB(db *sql.DB) {
 // Adds or overwrites item if already exists
 func AddItem(db *sql.DB, key, value string) {
 	stmt, _ := db.Prepare("INSERT or REPLACE INTO data(key, timestamp, value) values(?,?,?)")
-	_, err := stmt.Exec(key, time.Now().Format("2006-01-01T15:04:05Z"), value)
+	// fmt.Println(time.Now().Format("2006-01-02T15:04:05Z"))
+	_, err := stmt.Exec(key, time.Now().Format("2006-01-02T15:04:05Z"), value)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -68,4 +69,43 @@ func GetItemByKey(db *sql.DB, key string) *Item {
 	} else {
 		return nil
 	}
+}
+
+// Gets all items with timestamps less than (<) provided params.
+func GetItemsBeforeDate(db *sql.DB, year, month, day int) []Item {
+	items := make([]Item, 0)
+	stmt, err := db.Prepare("SELECT * FROM data WHERE timestamp<? ORDER BY timestamp DESC")
+	if err != nil {
+		log.Fatal(err)
+	}
+	row, err := stmt.Query(time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer row.Close()
+	for row.Next() { // Iterate and fetch the records from result cursor
+		var item Item
+		row.Scan(&item.Key, &item.Timestamp, &item.Value)
+		items = append(items, item)
+	}
+	return items
+}
+
+func GetItemsAfterDate(db *sql.DB, year, month, day int) []Item {
+	items := make([]Item, 0)
+	stmt, err := db.Prepare("SELECT * FROM data WHERE timestamp>=? ORDER BY timestamp DESC")
+	if err != nil {
+		log.Fatal(err)
+	}
+	row, err := stmt.Query(time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer row.Close()
+	for row.Next() { // Iterate and fetch the records from result cursor
+		var item Item
+		row.Scan(&item.Key, &item.Timestamp, &item.Value)
+		items = append(items, item)
+	}
+	return items
 }

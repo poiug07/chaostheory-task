@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -91,7 +92,46 @@ func (is *ItemServer) DateBeforeHandler(w http.ResponseWriter, r *http.Request) 
 		log.Fatal(err)
 		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
 	}
+	items := sqlitestore.GetItemsBeforeDate(is.store, year, month, day)
 
+	js, err := json.Marshal(items)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(js)
+}
+
+func (is *ItemServer) DateAfterHandler(w http.ResponseWriter, r *http.Request) {
+	y := chi.URLParam(r, "year")
+	m := chi.URLParam(r, "month")
+	d := chi.URLParam(r, "day")
+
+	year, err := strconv.Atoi(y)
+	if err != nil {
+		log.Fatal(err)
+		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
+	}
+	month, err := strconv.Atoi(m)
+	if err != nil {
+		log.Fatal(err)
+		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
+	}
+	day, err := strconv.Atoi(d)
+	if err != nil {
+		log.Fatal(err)
+		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
+	}
+	items := sqlitestore.GetItemsAfterDate(is.store, year, month, day)
+
+	js, err := json.Marshal(items)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(js)
 }
 
 func main() {
@@ -119,5 +159,7 @@ func main() {
 	r.Post("/add", server.AddHandler)
 	r.Get("/key/{key}", server.KeyHandler)
 	r.Get("/date/before/{year}/{month}/{day}", server.DateBeforeHandler)
-	http.ListenAndServe(":3000", r)
+	r.Get("/date/after/{year}/{month}/{day}", server.DateAfterHandler)
+	err := http.ListenAndServe(":3000", r)
+	fmt.Println(err)
 }
