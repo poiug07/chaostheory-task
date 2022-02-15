@@ -9,5 +9,5 @@ GET `/list`
 POST `/add`
 
 GET `/key/{key}`
-GET `/before/{timestamp}`
-GET `/after/{timestamp}`
+GET `/date/before/{year}/{month}/{day}`
+GET `/date/after/{year}/{month}/{day}`

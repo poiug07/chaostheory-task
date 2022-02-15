@@ -16,7 +16,7 @@ type Item struct {
 	Value     string    `json:"value"`
 }
 
-func NewItemStore(db *sql.DB) {
+func NewDB(db *sql.DB) {
 	q, err := db.Prepare("CREATE TABLE `data` (`key` VARCHAR(30) PRIMARY KEY, `timestamp` DATETIME NULL, `value` VAR CHAR(100))")
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
@@ -26,8 +26,9 @@ func NewItemStore(db *sql.DB) {
 	fmt.Println("\\")
 }
 
+// Adds or overwrites item if already exists
 func AddItem(db *sql.DB, key, value string) {
-	stmt, _ := db.Prepare("INSERT INTO data(key, timestamp, value) values(?,?,?)")
+	stmt, _ := db.Prepare("INSERT or REPLACE INTO data(key, timestamp, value) values(?,?,?)")
 	_, err := stmt.Exec(key, time.Now().Format("2006-01-01T15:04:05Z"), value)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -47,4 +48,24 @@ func GetAllItems(db *sql.DB) []Item {
 		items = append(items, item)
 	}
 	return items
+}
+
+// Try to get item by Key, return nil if not found.
+func GetItemByKey(db *sql.DB, key string) *Item {
+	stmt, err := db.Prepare("SELECT * FROM data WHERE key=?;")
+	if err != nil {
+		log.Fatal(err)
+	}
+	row, err := stmt.Query(key)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer row.Close()
+	if row.Next() {
+		var item Item
+		row.Scan(&item.Key, &item.Timestamp, &item.Value)
+		return &item
+	} else {
+		return nil
+	}
 }
