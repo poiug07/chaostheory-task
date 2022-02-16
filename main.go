@@ -110,21 +110,23 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 	w.Write(js)
 }
 
+const DBNAME = "test.db"
+
 func main() {
-	if _, err := os.Stat("test.db"); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(DBNAME); errors.Is(err, os.ErrNotExist) {
 		// If .db file does not exist
-		log.Println("Creating test.db...")
-		file, err := os.Create("test.db")
+		log.Println(fmt.Sprintf("Creating %s...", DBNAME))
+		file, err := os.Create(DBNAME)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
 		file.Close()
-		db, _ := sql.Open("sqlite3", "test.db")
+		db, _ := sql.Open("sqlite3", DBNAME)
 		sqlitestore.NewDB(db)
 		db.Close()
 	}
 
-	db, _ := sql.Open("sqlite3", "test.db")
+	db, _ := sql.Open("sqlite3", DBNAME)
 	defer db.Close()
 	server := NewItemServer(db)
 
