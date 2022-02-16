@@ -109,3 +109,15 @@ func GetItemsAfterDate(db *sql.DB, year, month, day int) []Item {
 	}
 	return items
 }
+
+// Delete item with specified key, does nothing if item does not exist
+func DeleteByKey(db *sql.DB, key string) {
+	stmt, err := db.Prepare("DELETE FROM data WHERE key=?")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = stmt.Exec(key)
+	if err != nil {
+		log.Fatal(err)
+	}
+}

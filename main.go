@@ -19,7 +19,7 @@ type ItemServer struct {
 	store *sql.DB
 }
 
-func NewItermServer(db *sql.DB) *ItemServer {
+func NewItemServer(db *sql.DB) *ItemServer {
 	return &ItemServer{
 		store: db,
 	}
@@ -28,13 +28,7 @@ func NewItermServer(db *sql.DB) *ItemServer {
 func (is *ItemServer) ListHandler(w http.ResponseWriter, r *http.Request) {
 	allItems := sqlitestore.GetAllItems(is.store)
 
-	js, err := json.Marshal(allItems)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	w.Write(js)
+	renderJSON(w, allItems)
 }
 
 func (is *ItemServer) AddHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,60 +44,40 @@ func (is *ItemServer) AddHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 	sqlitestore.AddItem(is.store, item.Key, item.Value)
-	js, _ := json.Marshal(ItemType{item.Key, item.Value})
-	w.Header().Set("content-type", "application/json")
-	w.Write(js)
+	renderJSON(w, ItemType{item.Key, item.Value})
 }
 
 func (is *ItemServer) KeyHandler(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
 	item := sqlitestore.GetItemByKey(is.store, key)
 
-	js, err := json.Marshal(item)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
 	if item == nil {
 		http.Error(w, "Requested record does not exists", http.StatusNoContent)
 		return
 	}
-	w.Write(js)
+	renderJSON(w, item)
 }
 
 func (is *ItemServer) DateBeforeHandler(w http.ResponseWriter, r *http.Request) {
-	y := chi.URLParam(r, "year")
-	m := chi.URLParam(r, "month")
-	d := chi.URLParam(r, "day")
-
-	year, err := strconv.Atoi(y)
-	if err != nil {
-		log.Fatal(err)
-		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
-	}
-	month, err := strconv.Atoi(m)
-	if err != nil {
-		log.Fatal(err)
-		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
-	}
-	day, err := strconv.Atoi(d)
-	if err != nil {
-		log.Fatal(err)
-		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
-	}
+	year, month, day := parseYMD(w, r)
 	items := sqlitestore.GetItemsBeforeDate(is.store, year, month, day)
 
-	js, err := json.Marshal(items)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	w.Write(js)
+	renderJSON(w, items)
 }
 
 func (is *ItemServer) DateAfterHandler(w http.ResponseWriter, r *http.Request) {
+	year, month, day := parseYMD(w, r)
+	items := sqlitestore.GetItemsAfterDate(is.store, year, month, day)
+
+	renderJSON(w, items)
+}
+
+func (is *ItemServer) DeleteByKeyHandler(w http.ResponseWriter, r *http.Request) {
+	key := chi.URLParam(r, "key")
+	sqlitestore.DeleteByKey(is.store, key)
+}
+
+func parseYMD(w http.ResponseWriter, r *http.Request) (int, int, int) {
 	y := chi.URLParam(r, "year")
 	m := chi.URLParam(r, "month")
 	d := chi.URLParam(r, "day")
@@ -123,9 +97,11 @@ func (is *ItemServer) DateAfterHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
 	}
-	items := sqlitestore.GetItemsAfterDate(is.store, year, month, day)
+	return year, month, day
+}
 
-	js, err := json.Marshal(items)
+func renderJSON(w http.ResponseWriter, v interface{}) {
+	js, err := json.Marshal(v)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -150,7 +126,7 @@ func main() {
 
 	db, _ := sql.Open("sqlite3", "test.db")
 	defer db.Close()
-	server := NewItermServer(db)
+	server := NewItemServer(db)
 
 	r := chi.NewRouter()
 
@@ -158,6 +134,7 @@ func main() {
 	r.Get("/list", server.ListHandler)
 	r.Post("/add", server.AddHandler)
 	r.Get("/key/{key}", server.KeyHandler)
+	r.Delete("/key/{key}", server.DeleteByKeyHandler)
 	r.Get("/date/before/{year}/{month}/{day}", server.DateBeforeHandler)
 	r.Get("/date/after/{year}/{month}/{day}", server.DateAfterHandler)
 	err := http.ListenAndServe(":3000", r)
