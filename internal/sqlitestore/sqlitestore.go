@@ -2,9 +2,7 @@ package sqlitestore
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
-	"os"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -19,17 +17,14 @@ type Item struct {
 func NewDB(db *sql.DB) {
 	q, err := db.Prepare("CREATE TABLE `data` (`key` VARCHAR(30) PRIMARY KEY, `timestamp` DATETIME NULL, `value` VAR CHAR(100))")
 	if err != nil {
-		fmt.Printf("error: %v\n", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 	q.Exec()
-	fmt.Println("\\")
 }
 
 // Adds or overwrites item if already exists
 func AddItem(db *sql.DB, key, value string) {
 	stmt, _ := db.Prepare("INSERT or REPLACE INTO data(key, timestamp, value) values(?,?,?)")
-	// fmt.Println(time.Now().Format("2006-01-02T15:04:05Z"))
 	_, err := stmt.Exec(key, time.Now().Format("2006-01-02T15:04:05Z"), value)
 	if err != nil {
 		log.Fatal(err.Error())

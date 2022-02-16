@@ -42,6 +42,7 @@ func (is *ItemServer) AddHandler(w http.ResponseWriter, r *http.Request) {
 	var item ItemType
 	if err := dec.Decode(&item); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	sqlitestore.AddItem(is.store, item.Key, item.Value)
 	renderJSON(w, ItemType{item.Key, item.Value})
@@ -60,6 +61,10 @@ func (is *ItemServer) KeyHandler(w http.ResponseWriter, r *http.Request) {
 
 func (is *ItemServer) DateBeforeHandler(w http.ResponseWriter, r *http.Request) {
 	year, month, day := parseYMD(w, r)
+	if year == 0 {
+		return
+	}
+
 	items := sqlitestore.GetItemsBeforeDate(is.store, year, month, day)
 
 	renderJSON(w, items)
@@ -84,18 +89,18 @@ func parseYMD(w http.ResponseWriter, r *http.Request) (int, int, int) {
 
 	year, err := strconv.Atoi(y)
 	if err != nil {
-		log.Fatal(err)
 		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
+		return 0, 0, 0
 	}
 	month, err := strconv.Atoi(m)
 	if err != nil {
-		log.Fatal(err)
 		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
+		return 0, 0, 0
 	}
 	day, err := strconv.Atoi(d)
 	if err != nil {
-		log.Fatal(err)
 		http.Error(w, "Expected integer year, month and day.", http.StatusBadRequest)
+		return 0, 0, 0
 	}
 	return year, month, day
 }
@@ -139,6 +144,7 @@ func main() {
 	r.Delete("/key/{key}", server.DeleteByKeyHandler)
 	r.Get("/date/before/{year}/{month}/{day}", server.DateBeforeHandler)
 	r.Get("/date/after/{year}/{month}/{day}", server.DateAfterHandler)
+
 	err := http.ListenAndServe(":3000", r)
 	fmt.Println(err)
 }
